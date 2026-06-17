@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>🚤 競艇予想AI</title>
+  <style>
+    :root {
+      --bg0:#080808; --bg1:#0f0f0f; --bg2:#1a1a1a; --bg3:#222;
+      --gold:#c9a227; --red:#c0392b; --green:#27ae60;
+      --blue:#1a6bb5; --cyan:#00b4d8;
+      --text1:#f0f0f0; --text2:#aaa; --text3:#555;
+      --border:#2a2a2a; --border-blue:rgba(0,180,216,.35);
+    }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { background:var(--bg0); color:var(--text1); font-family:'Hiragino Kaku Gothic Pro','Yu Gothic','Noto Sans JP',sans-serif; min-height:100vh; padding-bottom:160px; }
+
+    header { position:sticky; top:0; z-index:100; background:linear-gradient(180deg,#000d1a,#000810); border-bottom:1.5px solid var(--cyan); box-shadow:0 2px 20px rgba(0,180,216,.2); }
+    .hdr { max-width:840px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; height:52px; padding:0 14px; }
+    .logo { display:flex; align-items:center; gap:9px; }
+    .logo-ico { font-size:26px; }
+    .logo-name { font-size:17px; font-weight:900; letter-spacing:.05em; background:linear-gradient(90deg,#00b4d8,#90e0ef,#00b4d8); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+    .logo-en { font-size:9px; color:var(--text3); letter-spacing:.18em; }
+    .badge { font-size:10px; font-weight:700; color:#fff; background:var(--blue); padding:3px 8px; border-radius:99px; }
+
+    .wrap { max-width:840px; margin:0 auto; padding:16px 14px 0; }
+
+    /* API */
+    .api-setup { background:var(--bg2); border:1px solid var(--border-blue); border-radius:12px; margin-bottom:18px; overflow:hidden; }
+    .api-setup-hdr { display:flex; align-items:center; justify-content:space-between; padding:12px 14px; cursor:pointer; background:linear-gradient(90deg,#00101a,#111); }
+    .api-setup-hdr-left { display:flex; align-items:center; gap:8px; }
+    .api-status { width:8px; height:8px; border-radius:50%; background:var(--text3); }
+    .api-status.ok { background:var(--green); box-shadow:0 0 6px var(--green); }
+    .api-setup-title { font-size:13px; font-weight:700; color:var(--cyan); letter-spacing:.08em; }
+    .api-setup-sub { font-size:11px; color:var(--text3); }
+    .api-arrow { font-size:12px; color:var(--text3); transition:transform .2s; }
+    .api-arrow.open { transform:rotate(180deg); }
+    .api-body { display:none; padding:14px; border-top:1px solid var(--border); }
+    .api-body.open { display:block; }
+    .api-note { font-size:11px; color:var(--text3); line-height:1.7; margin-bottom:10px; padding:8px 10px; background:var(--bg3); border-radius:6px; }
+    .api-note a { color:var(--cyan); text-decoration:none; }
+    .api-input-row { display:flex; gap:8px; }
+    .api-input { flex:1; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:10px 12px; color:var(--text1); font-size:13px; font-family:'Courier New',monospace; outline:none; transition:border-color .15s; }
+    .api-input:focus { border-color:var(--cyan); }
+    .btn-save { background:var(--cyan); color:#000; font-size:12px; font-weight:800; border:none; border-radius:8px; padding:0 16px; cursor:pointer; white-space:nowrap; }
+    .model-row { display:flex; gap:6px; margin-top:10px; }
+    .model-btn { flex:1; font-size:11px; font-weight:700; background:var(--bg3); border:1px solid var(--border); color:var(--text2); padding:8px 4px; border-radius:8px; cursor:pointer; text-align:center; transition:all .15s; }
+    .model-btn.on { background:var(--cyan); border-color:var(--cyan); color:#000; }
+    .model-name { font-size:12px; }
+    .model-desc { font-size:9px; font-weight:400; color:inherit; opacity:.7; margin-top:1px; }
+
+    .sl { display:flex; align-items:center; gap:6px; font-size:11px; font-weight:700; color:var(--cyan); letter-spacing:.12em; text-transform:uppercase; margin-bottom:9px; }
+    .sl::before { content:''; width:3px; height:13px; background:var(--cyan); border-radius:2px; }
+
+    /* UPLOAD */
+    .upload-zone { position:relative; border:2px dashed var(--border-blue); border-radius:12px; background:var(--bg2); padding:28px 14px 22px; text-align:center; cursor:pointer; transition:all .2s; margin-bottom:18px; }
+    .upload-zone:hover,.upload-zone.over { border-color:var(--cyan); background:#001018; box-shadow:0 0 20px rgba(0,180,216,.12); }
+    .upload-zone input { position:absolute; inset:0; opacity:0; cursor:pointer; }
+    .upload-ico { font-size:38px; display:block; margin-bottom:8px; }
+    .upload-main { font-size:15px; font-weight:800; color:var(--cyan); margin-bottom:4px; }
+    .upload-sub { font-size:12px; color:var(--text3); line-height:1.6; }
+    .upload-chips { display:flex; justify-content:center; flex-wrap:wrap; gap:5px; margin-top:10px; }
+    .uc { font-size:10px; color:var(--text2); background:var(--bg3); border:1px solid var(--border); padding:3px 9px; border-radius:99px; }
+
+    #prev-sec { display:none; margin-bottom:18px; }
+    .prev-bar { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+    .prev-cnt { font-size:12px; color:var(--text2); }
+    .prev-cnt b { color:var(--cyan); }
+    .btn-sm { font-size:11px; background:none; border:1px solid var(--red); color:var(--red); padding:4px 11px; border-radius:6px; cursor:pointer; }
+    .btn-sm:hover { background:var(--red); color:#fff; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:7px; }
+    @media(max-width:400px){ .grid { grid-template-columns:repeat(2,1fr); } }
+    .pitem { position:relative; border-radius:8px; overflow:hidden; background:var(--bg2); border:1px solid var(--border); aspect-ratio:9/16; cursor:zoom-in; transition:all .15s; }
+    .pitem:hover { border-color:var(--cyan); transform:scale(1.02); }
+    .pitem img { width:100%; height:100%; object-fit:cover; }
+    .pnum { position:absolute; top:4px; left:4px; width:20px; height:20px; border-radius:50%; background:rgba(0,180,216,.9); color:#000; font-size:10px; font-weight:900; display:flex; align-items:center; justify-content:center; }
+    .pname { position:absolute; bottom:0; left:0; right:0; background:linear-gradient(transparent,rgba(0,0,0,.85)); font-size:9px; color:var(--text2); padding:14px 5px 4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .pdel { position:absolute; top:4px; right:4px; width:22px; height:22px; border-radius:50%; background:rgba(192,57,43,.9); border:none; color:#fff; font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity .15s; }
+    .pitem:hover .pdel { opacity:1; }
+
+    hr { border:none; border-top:1px solid var(--border); margin:16px 0; }
+
+    /* RACE INFO */
+    .info-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:7px; margin-bottom:18px; }
+    @media(min-width:500px){ .info-grid { grid-template-columns:repeat(4,1fr); } }
+    .info-box { background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:8px 10px; }
+    .info-box label { font-size:9px; color:var(--text3); display:block; margin-bottom:2px; }
+    .info-box select { width:100%; background:transparent; border:none; color:var(--text1); font-size:13px; font-weight:700; outline:none; font-family:inherit; }
+    .info-box select option { background:var(--bg3); }
+
+    /* CHIPS */
+    .chip-row { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:18px; }
+    .chip { font-size:12px; padding:6px 12px; border-radius:99px; border:1px solid var(--border); background:var(--bg2); color:var(--text2); cursor:pointer; transition:all .15s; user-select:none; }
+    .chip:hover { border-color:var(--cyan); color:var(--cyan); }
+    .chip.on { background:var(--cyan); border-color:var(--cyan); color:#000; font-weight:800; }
+
+    /* FAB */
+    .fab { position:fixed; bottom:0; left:0; right:0; padding:10px 14px 18px; background:linear-gradient(transparent,rgba(8,8,8,.98) 30%); z-index:90; }
+    .fab-inner { max-width:840px; margin:0 auto; }
+    .btn-go { width:100%; padding:15px; font-size:16px; font-weight:900; letter-spacing:.07em; background:linear-gradient(135deg,#006080,#00b4d8,#006080); background-size:200%; border:none; border-radius:12px; color:#fff; cursor:pointer; transition:all .2s; box-shadow:0 4px 24px rgba(0,180,216,.4); display:flex; align-items:center; justify-content:center; gap:9px; }
+    .btn-go:hover { background-position:right; box-shadow:0 6px 30px rgba(0,180,216,.6); transform:translateY(-1px); }
+    .btn-go:disabled { background:#222; color:#444; cursor:not-allowed; box-shadow:none; transform:none; }
+
+    /* RESULT */
+    #result-sec { display:none; margin-top:20px; }
+    .result-box { background:var(--bg2); border:1px solid var(--border-blue); border-radius:12px; overflow:hidden; }
+    .result-hdr { display:flex; align-items:center; justify-content:space-between; padding:11px 14px; background:linear-gradient(90deg,#00101a,#111); border-bottom:1px solid var(--border-blue); }
+    .result-hdr-left { display:flex; align-items:center; gap:7px; }
+    .result-hdr-title { font-size:13px; font-weight:700; color:var(--cyan); }
+    .btn-copy-result { font-size:11px; background:var(--bg3); border:1px solid var(--border); color:var(--text2); padding:4px 12px; border-radius:6px; cursor:pointer; }
+    .btn-copy-result:hover { border-color:var(--cyan); color:var(--cyan); }
+    .result-body { padding:16px; font-size:14px; line-height:1.9; color:var(--text2); white-space:pre-wrap; word-break:break-word; min-height:60px; }
+    .cursor { display:inline-block; width:2px; height:1em; background:var(--cyan); animation:blink .7s infinite; vertical-align:text-bottom; margin-left:1px; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+    .loading-bar { height:2px; background:var(--border); border-radius:1px; overflow:hidden; }
+    .loading-fill { height:100%; width:0%; background:linear-gradient(90deg,var(--blue),var(--cyan)); transition:width .3s; }
+    .loading-txt { text-align:center; font-size:12px; color:var(--text3); padding:12px; display:none; }
+    .md-h3 { color:var(--cyan); font-weight:800; font-size:14px; margin-top:16px; margin-bottom:4px; border-bottom:1px solid var(--border-blue); padding-bottom:4px; }
+    .md-h2 { color:#90e0ef; font-weight:900; font-size:15px; margin-top:20px; margin-bottom:6px; }
+
+    /* 的中実績 */
+    .jisseki-box { background:var(--bg2); border:1px solid rgba(0,180,216,.35); border-radius:12px; overflow:hidden; }
+    .jisseki-stats { display:grid; grid-template-columns:repeat(4,1fr); border-bottom:1px solid var(--border); }
+    .js-stat { padding:12px 8px; text-align:center; border-right:1px solid var(--border); }
+    .js-stat:last-child { border-right:none; }
+    .js-stat-val { font-size:20px; font-weight:900; color:var(--text1); }
+    .js-stat-val.plus { color:#2ecc71; }
+    .js-stat-val.minus { color:var(--red); }
+    .js-stat-label { font-size:9px; color:var(--text3); margin-top:2px; }
+    .jisseki-form { padding:14px; border-bottom:1px solid var(--border); }
+    .jf-row { display:flex; gap:7px; margin-bottom:8px; }
+    .jf-inp { flex:1; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:9px 10px; color:var(--text1); font-size:13px; outline:none; min-width:0; font-family:inherit; }
+    .jf-inp:focus { border-color:var(--cyan); }
+    .jf-inp option { background:var(--bg3); }
+    .hit-toggle { display:flex; gap:6px; flex:1; }
+    .hit-btn { flex:1; font-size:13px; font-weight:700; padding:9px; border-radius:8px; border:1px solid var(--border); background:var(--bg3); color:var(--text2); cursor:pointer; transition:all .15s; }
+    .hit-btn.on-hit { background:#1a5e20; border-color:#27ae60; color:#2ecc71; }
+    .hit-btn.on-miss { background:#4a0a0a; border-color:var(--red); color:#e74c3c; }
+    .jf-money { flex-wrap:wrap; }
+    .jf-money-item { flex:1; min-width:120px; }
+    .jf-money-label { font-size:9px; color:var(--text3); margin-bottom:3px; }
+    .btn-record { width:100%; padding:11px; font-size:14px; font-weight:900; background:linear-gradient(135deg,#006080,#00b4d8); border:none; border-radius:10px; color:#fff; cursor:pointer; transition:all .15s; }
+    .btn-record:hover { box-shadow:0 4px 16px rgba(0,180,216,.4); transform:translateY(-1px); }
+    .jisseki-list { max-height:320px; overflow-y:auto; }
+    .jr-item { display:flex; align-items:center; gap:8px; padding:10px 14px; border-bottom:1px solid var(--border); }
+    .jr-item:last-child { border-bottom:none; }
+    .jr-badge { font-size:16px; width:24px; text-align:center; }
+    .jr-info { flex:1; min-width:0; }
+    .jr-title { font-size:13px; font-weight:700; color:var(--text1); }
+    .jr-sub { font-size:10px; color:var(--text3); margin-top:1px; }
+    .jr-profit { font-size:13px; font-weight:900; white-space:nowrap; }
+    .jr-profit.plus { color:#2ecc71; }
+    .jr-profit.minus { color:var(--red); }
+    .jr-del { background:none; border:none; color:var(--text3); font-size:14px; cursor:pointer; padding:4px; }
+    .jr-del:hover { color:var(--red); }
+    .jisseki-empty { text-align:center; padding:28px; font-size:12px; color:var(--text3); }
+    .jisseki-footer { display:flex; justify-content:flex-end; padding:8px 14px; border-top:1px solid var(--border); }
+    .btn-clear-all { font-size:11px; background:none; border:1px solid var(--red); color:var(--red); padding:4px 11px; border-radius:6px; cursor:pointer; }
+
+    /* MODAL */
+    #modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,.93); z-index:200; align-items:center; justify-content:center; padding:12px; }
+    #modal.open { display:flex; }
+    #modal-img { max-width:100%; max-height:90vh; border-radius:8px; }
+    #modal-close { position:absolute; top:14px; right:14px; background:rgba(255,255,255,.1); border:none; color:#fff; font-size:20px; width:38px; height:38px; border-radius:50%; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+
+    /* TOAST */
+    #toast { position:fixed; bottom:85px; left:50%; transform:translateX(-50%) translateY(10px); background:var(--bg3); border:1px solid var(--border); color:var(--text1); font-size:13px; padding:10px 18px; border-radius:99px; opacity:0; transition:all .25s; pointer-events:none; white-space:nowrap; z-index:300; }
+    #toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="hdr">
+    <div class="logo">
+      <span class="logo-ico">🚤</span>
+      <div>
+        <div class="logo-name">競艇予想AI</div>
+        <div class="logo-en">Boat Racing Analyzer</div>
+      </div>
+    </div>
+    <span class="badge">BETA</span>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- ① APIキー -->
+  <div class="api-setup" id="api-setup">
+    <div class="api-setup-hdr" onclick="toggleApiSetup()">
+      <div class="api-setup-hdr-left">
+        <div class="api-status" id="api-status"></div>
+        <div>
+          <div class="api-setup-title">① APIキー設定</div>
+          <div class="api-setup-sub" id="api-sub">未設定　クリックして設定してください</div>
+        </div>
+      </div>
+      <div class="api-arrow" id="api-arrow">▼</div>
+    </div>
+    <div class="api-body" id="api-body">
+      <div class="api-note">
+        Anthropic APIキーが必要です。<a href="https://console.anthropic.com/" target="_blank">console.anthropic.com</a> で取得できます。キーはこのブラウザのみに保存されます。
+      </div>
+      <div class="api-input-row">
+        <input class="api-input" id="api-key-input" type="password" placeholder="sk-ant-api03-..." autocomplete="off">
+        <button class="btn-save" onclick="saveApiKey()">保存</button>
+      </div>
+      <div class="model-row">
+        <div class="model-btn on" data-m="claude-sonnet-4-6" onclick="selectModel(this)">
+          <div class="model-name">⚡ Sonnet</div>
+          <div class="model-desc">推奨・バランス型</div>
+        </div>
+        <div class="model-btn" data-m="claude-opus-4-8" onclick="selectModel(this)">
+          <div class="model-name">🧠 Opus</div>
+          <div class="model-desc">最高精度・高コスト</div>
+        </div>
+        <div class="model-btn" data-m="claude-haiku-4-5-20251001" onclick="selectModel(this)">
+          <div class="model-name">💨 Haiku</div>
+          <div class="model-desc">高速・低コスト</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ② 画像アップロード -->
+  <div class="sl">② 画像をアップロード</div>
+  <div class="upload-zone" id="uz">
+    <input type="file" id="fi" multiple accept="image/*">
+    <span class="upload-ico">📁</span>
+    <div class="upload-main">タップして画像を選択</div>
+    <div class="upload-sub">出走表・オッズ・選手データのスクリーンショット</div>
+    <div class="upload-chips">
+      <span class="uc">JPG</span><span class="uc">PNG</span>
+      <span class="uc">WebP</span><span class="uc">HEIC</span>
+      <span class="uc">最大120枚</span>
+    </div>
+  </div>
+
+  <!-- ③ プレビュー -->
+  <div id="prev-sec">
+    <div class="sl">③ アップロード済み</div>
+    <div class="prev-bar">
+      <div class="prev-cnt"><b id="cnt">0</b> 枚</div>
+      <button class="btn-sm" onclick="clearAll()">すべて削除</button>
+    </div>
+    <div class="grid" id="grid"></div>
+    <hr>
+  </div>
+
+  <!-- ④ レース情報 -->
+  <div class="sl">④ レース情報（任意）</div>
+  <div class="info-grid">
+    <div class="info-box">
+      <label>競艇場</label>
+      <select id="venue">
+        <option value="">未選択</option>
+        <option>桐生</option><option>戸田</option><option>江戸川</option><option>平和島</option>
+        <option>多摩川</option><option>浜名湖</option><option>蒲郡</option><option>常滑</option>
+        <option>津</option><option>三国</option><option>びわこ</option><option>住之江</option>
+        <option>尼崎</option><option>鳴門</option><option>丸亀</option><option>児島</option>
+        <option>宮島</option><option>徳山</option><option>下関</option><option>若松</option>
+        <option>芦屋</option><option>福岡</option><option>唐津</option><option>大村</option>
+      </select>
+    </div>
+    <div class="info-box">
+      <label>レース番号</label>
+      <select id="rnum">
+        <option value="">未選択</option>
+        <option>1R</option><option>2R</option><option>3R</option><option>4R</option>
+        <option>5R</option><option>6R</option><option>7R</option><option>8R</option>
+        <option>9R</option><option>10R</option><option>11R</option><option>12R</option>
+      </select>
+    </div>
+    <div class="info-box">
+      <label>水面状況</label>
+      <select id="water">
+        <option value="">未選択</option>
+        <option>穏やか</option><option>やや荒れ</option><option>荒れ</option>
+        <option>インコース有利</option><option>アウトコース有利</option>
+      </select>
+    </div>
+    <div class="info-box">
+      <label>天候・風</label>
+      <select id="weather">
+        <option value="">未選択</option>
+        <option>晴・無風</option><option>晴・追い風</option><option>晴・向い風</option>
+        <option>雨・無風</option><option>雨・荒れ</option><option>曇り</option>
+      </select>
+    </div>
+  </div>
+  <hr>
+
+  <!-- ⑤ 分析タイプ -->
+  <div class="sl">⑤ 分析タイプ</div>
+  <div class="chip-row" id="chip-row">
+    <div class="chip on" data-v="総合予想（◎○▲△印付け）">🏆 総合予想</div>
+    <div class="chip on" data-v="1着・2着・3着の本命を詳しく">🎯 本命・対抗</div>
+    <div class="chip" data-v="穴艇・高配当が期待できる艇の発掘">💎 穴艇発掘</div>
+    <div class="chip" data-v="各艇のモーター勝率・ボート勝率分析">⚙️ モーター分析</div>
+    <div class="chip" data-v="展示タイム・スタートタイミング分析">⏱️ 展示分析</div>
+    <div class="chip" data-v="コース別成績・枠番有利不利の考察">🔄 コース分析</div>
+    <div class="chip" data-v="具体的な舟券の買い目と配分提案">🎫 買い目提案</div>
+  </div>
+
+  <!-- ⑥ 分析結果 -->
+  <div id="result-sec">
+    <div class="sl">⑥ 分析結果</div>
+    <div class="result-box">
+      <div class="result-hdr">
+        <div class="result-hdr-left"><span>🚤</span><span class="result-hdr-title" id="result-title">分析中...</span></div>
+        <button class="btn-copy-result" onclick="copyResult()">📋 コピー</button>
+      </div>
+      <div class="loading-bar"><div class="loading-fill" id="loading-fill"></div></div>
+      <div class="loading-txt" id="loading-txt">AIが画像を読み取っています...</div>
+      <div class="result-body" id="result-body"></div>
+    </div>
+  </div>
+
+  <!-- ⑦ 的中実績 -->
+  <div style="margin-top:20px; margin-bottom:4px;">
+    <div class="sl">⑦ 的中実績</div>
+    <div class="jisseki-box">
+      <div class="jisseki-stats">
+        <div class="js-stat"><div class="js-stat-val" id="js-total">0</div><div class="js-stat-label">総レース</div></div>
+        <div class="js-stat"><div class="js-stat-val" id="js-hits">0</div><div class="js-stat-label">的中</div></div>
+        <div class="js-stat"><div class="js-stat-val" id="js-rate">0%</div><div class="js-stat-label">的中率</div></div>
+        <div class="js-stat"><div class="js-stat-val" id="js-profit">¥0</div><div class="js-stat-label">累計収支</div></div>
+      </div>
+      <div class="jisseki-form">
+        <div class="jf-row">
+          <input class="jf-inp" id="jf-date" type="date">
+          <select class="jf-inp" id="jf-venue">
+            <option value="">競艇場</option>
+            <option>桐生</option><option>戸田</option><option>江戸川</option><option>平和島</option>
+            <option>多摩川</option><option>浜名湖</option><option>蒲郡</option><option>常滑</option>
+            <option>津</option><option>三国</option><option>びわこ</option><option>住之江</option>
+            <option>尼崎</option><option>鳴門</option><option>丸亀</option><option>児島</option>
+            <option>宮島</option><option>徳山</option><option>下関</option><option>若松</option>
+            <option>芦屋</option><option>福岡</option><option>唐津</option><option>大村</option>
+          </select>
+          <select class="jf-inp" id="jf-race" style="max-width:80px;">
+            <option value="">R</option>
+            <option>1R</option><option>2R</option><option>3R</option><option>4R</option>
+            <option>5R</option><option>6R</option><option>7R</option><option>8R</option>
+            <option>9R</option><option>10R</option><option>11R</option><option>12R</option>
+          </select>
+        </div>
+        <div class="jf-row">
+          <div class="hit-toggle">
+            <button class="hit-btn on-hit" id="btn-hit" onclick="setJHit(true)">✅ 的中</button>
+            <button class="hit-btn" id="btn-miss" onclick="setJHit(false)">❌ ハズレ</button>
+          </div>
+        </div>
+        <div class="jf-row jf-money">
+          <div class="jf-money-item">
+            <div class="jf-money-label">投資額（円）</div>
+            <input class="jf-inp" id="jf-invest" type="number" placeholder="2000" min="0">
+          </div>
+          <div class="jf-money-item">
+            <div class="jf-money-label">払い戻し（円）</div>
+            <input class="jf-inp" id="jf-payout" type="number" placeholder="0" min="0">
+          </div>
+        </div>
+        <button class="btn-record" onclick="saveJisseki()">📝 記録する</button>
+      </div>
+      <div class="jisseki-list" id="jisseki-list"></div>
+      <div class="jisseki-footer" id="jisseki-footer" style="display:none;">
+        <button class="btn-clear-all" onclick="clearJisseki()">全削除</button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /.wrap -->
+
+<!-- FAB -->
+<div class="fab">
+  <div class="fab-inner">
+    <button class="btn-go" id="go-btn" onclick="analyze()" disabled>
+      <span>🚤</span><span>AIで分析する</span>
+    </button>
+  </div>
+</div>
+
+<div id="modal" onclick="closeModal()">
+  <button id="modal-close" onclick="closeModal()">✕</button>
+  <img id="modal-img" src="" alt="">
+</div>
+<div id="toast"></div>
+
+<script>
+/* ─── STATE ─── */
+let files = [], apiKey = localStorage.getItem('keiba_api_key') || '';
+let model = localStorage.getItem('keiba_model') || 'claude-sonnet-4-6';
+let apiOpen = !apiKey, resultText = '';
+let jHit = true;
+let jisseki = JSON.parse(localStorage.getItem('kyotei_jisseki') || '[]');
+
+/* ─── INIT ─── */
+(function(){
+  if (apiKey) { document.getElementById('api-key-input').value = apiKey; setApiStatus(true); }
+  else openApiSetup();
+  document.querySelectorAll('.model-btn').forEach(b => b.classList.toggle('on', b.dataset.m === model));
+  document.getElementById('jf-date').value = new Date().toISOString().slice(0,10);
+  renderJisseki();
+})();
+
+/* ─── API ─── */
+function toggleApiSetup() {
+  apiOpen = !apiOpen;
+  document.getElementById('api-body').classList.toggle('open', apiOpen);
+  document.getElementById('api-arrow').classList.toggle('open', apiOpen);
+}
+function openApiSetup() {
+  apiOpen = true;
+  document.getElementById('api-body').classList.add('open');
+  document.getElementById('api-arrow').classList.add('open');
+}
+function saveApiKey() {
+  const v = document.getElementById('api-key-input').value.trim();
+  if (!v.startsWith('sk-ant-')) { toast('⚠️ APIキーの形式が違います'); return; }
+  apiKey = v; localStorage.setItem('keiba_api_key', v);
+  setApiStatus(true); toggleApiSetup(); updateGoBtn(); toast('✅ APIキーを保存しました');
+}
+function setApiStatus(ok) {
+  document.getElementById('api-status').className = 'api-status' + (ok ? ' ok' : '');
+  document.getElementById('api-sub').textContent = ok ? '設定済み　クリックして変更' : '未設定　クリックして設定してください';
+}
+function selectModel(el) {
+  document.querySelectorAll('.model-btn').forEach(b => b.classList.remove('on'));
+  el.classList.add('on'); model = el.dataset.m; localStorage.setItem('keiba_model', model);
+}
+
+/* ─── UPLOAD ─── */
+const uz = document.getElementById('uz'), fi = document.getElementById('fi');
+uz.addEventListener('dragover', e => { e.preventDefault(); uz.classList.add('over'); });
+uz.addEventListener('dragleave', () => uz.classList.remove('over'));
+uz.addEventListener('drop', e => { e.preventDefault(); uz.classList.remove('over'); addFiles(e.dataTransfer.files); });
+fi.addEventListener('change', () => { addFiles(fi.files); fi.value = ''; });
+
+function addFiles(list) {
+  const arr = Array.from(list).filter(f => f.type.startsWith('image/'));
+  const room = 120 - files.length;
+  if (room <= 0) { toast('⚠️ 最大120枚までです'); return; }
+  if (arr.length > room) toast(`⚠️ ${arr.length - room}枚スキップ（上限120枚）`);
+  arr.slice(0, room).forEach(f => {
+    compressImage(f, (url, mime, b64) => { files.push({ name:f.name, url, mime, b64 }); render(); updateGoBtn(); });
+  });
+}
+function compressImage(file, cb) {
+  const r = new FileReader();
+  r.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      const MAX = 1568; let w = img.width, h = img.height;
+      if (Math.max(w,h) > MAX) { if (w>h) { h=Math.round(h*MAX/w); w=MAX; } else { w=Math.round(w*MAX/h); h=MAX; } }
+      const c = document.createElement('canvas'); c.width=w; c.height=h;
+      c.getContext('2d').drawImage(img,0,0,w,h);
+      const mime='image/jpeg', url=c.toDataURL(mime,0.85), b64=url.split(',')[1];
+      cb(url, mime, b64);
+    };
+    img.src = e.target.result;
+  };
+  r.readAsDataURL(file);
+}
+function render() {
+  const g = document.getElementById('grid');
+  document.getElementById('cnt').textContent = files.length;
+  document.getElementById('prev-sec').style.display = files.length ? 'block' : 'none';
+  g.innerHTML = '';
+  files.forEach((f,i) => {
+    const d = document.createElement('div'); d.className = 'pitem';
+    d.innerHTML = `<img src="${f.url}" onclick="openModal('${f.url}')"><div class="pnum">${i+1}</div><div class="pname">${f.name}</div><button class="pdel" onclick="delFile(${i},event)">✕</button>`;
+    g.appendChild(d);
+  });
+}
+function delFile(i,e) { e.stopPropagation(); files.splice(i,1); render(); updateGoBtn(); toast('🗑️ 削除しました'); }
+function clearAll() { files=[]; render(); updateGoBtn(); toast('🗑️ 全削除しました'); }
+function updateGoBtn() { document.getElementById('go-btn').disabled = files.length===0 || !apiKey; }
+
+/* ─── CHIPS ─── */
+document.getElementById('chip-row').addEventListener('click', e => {
+  const c = e.target.closest('.chip'); if (!c) return; c.classList.toggle('on');
+});
+
+/* ─── ANALYZE ─── */
+async function analyze() {
+  if (!apiKey) { toast('⚠️ APIキーを設定してください'); openApiSetup(); return; }
+  if (!files.length) { toast('⚠️ 画像をアップロードしてください'); return; }
+  const venue   = document.getElementById('venue').value;
+  const rnum    = document.getElementById('rnum').value;
+  const water   = document.getElementById('water').value;
+  const weather = document.getElementById('weather').value;
+  const chips   = [...document.querySelectorAll('.chip.on')].map(c => c.dataset.v);
+  const raceInfo = [venue, rnum, water, weather].filter(Boolean).join('　');
+
+  let prompt = `ボートレース（競艇）の${chips.length ? chips.join('・') : '総合予想'}をしてください。\n\n`;
+  if (raceInfo) prompt += `【レース情報】${raceInfo}\n\n`;
+  prompt += `【添付画像】出走表・オッズ・選手データなどを${files.length}枚添付しています。\n\n`;
+  prompt += `【分析内容】\n`;
+  prompt += `1. 画像から全艇の艇番（1〜6）・選手名・勝率・2連率・3連率・モーター番号・モーター勝率を読み取る\n`;
+  prompt += `2. 展示タイム・展示航走の評価（速い艇を特定）\n`;
+  prompt += `3. 各艇のコース適性・スタートタイミングを評価\n`;
+  prompt += `4. チルト角度を考慮する（マイナス=安定・インコース向き、プラス=直線伸び・捲り狙い）\n`;
+  prompt += `5. ◎本命 ○対抗 ▲単穴 △連穴 の印をつける\n`;
+  prompt += `6. 1コース（白）の信頼度を最初に評価する（競艇はインコースが圧倒的に有利）\n`;
+  if (chips.some(c=>c.includes('穴艇'))) prompt += `7. 高配当が期待できる穴艇（アウトコース有利時・モーター抜群の艇）を指摘\n`;
+  if (chips.some(c=>c.includes('買い目'))) prompt += `7. 3連単・3連複・2連単の具体的な買い目を提案\n`;
+  prompt += `\n各予想には確信度（高/中/低）を添えてください。\n`;
+  prompt += `※ エンターテインメント目的の分析です。舟券購入は自己責任でお願いします。`;
+
+  const content = [...files.map(f => ({ type:'image', source:{ type:'base64', media_type:f.mime, data:f.b64 } })), { type:'text', text:prompt }];
+
+  const sec = document.getElementById('result-sec');
+  sec.style.display = 'block';
+  sec.scrollIntoView({ behavior:'smooth', block:'start' });
+  document.getElementById('result-title').textContent = '分析中...';
+  document.getElementById('result-body').textContent = '';
+  document.getElementById('loading-txt').style.display = 'block';
+  document.getElementById('loading-fill').style.width = '0%';
+  document.getElementById('go-btn').disabled = true;
+  resultText = '';
+
+  // レース情報を実績フォームに自動反映
+  if (venue) document.getElementById('jf-venue').value = venue;
+  if (rnum)  document.getElementById('jf-race').value  = rnum;
+
+  let prog = 0;
+  const pt = setInterval(() => { prog = Math.min(prog + Math.random()*3, 85); document.getElementById('loading-fill').style.width = prog+'%'; }, 300);
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'x-api-key':apiKey, 'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' },
+      body:JSON.stringify({ model, max_tokens:4096, stream:true, messages:[{ role:'user', content }] })
+    });
+    clearInterval(pt);
+    if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.error?.message || `HTTP ${res.status}`); }
+    document.getElementById('loading-txt').style.display = 'none';
+    document.getElementById('loading-fill').style.width = '100%';
+    document.getElementById('result-title').textContent = '分析結果';
+
+    const reader = res.body.getReader(); const dec = new TextDecoder(); let buf = '';
+    while (true) {
+      const { done, value } = await reader.read(); if (done) break;
+      buf += dec.decode(value, { stream:true });
+      const lines = buf.split('\n'); buf = lines.pop();
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const raw = line.slice(6).trim(); if (raw==='[DONE]') break;
+        try { const obj = JSON.parse(raw); if (obj.type==='content_block_delta' && obj.delta?.type==='text_delta') { resultText += obj.delta.text; renderResult(resultText); } } catch {}
+      }
+    }
+    renderResult(resultText, true);
+    document.getElementById('result-title').textContent = '✅ 分析完了';
+
+  } catch(e) {
+    clearInterval(pt);
+    document.getElementById('loading-txt').style.display = 'none';
+    document.getElementById('result-body').innerHTML = `<span style="color:var(--red)">⚠️ エラー: ${e.message}</span>`;
+    document.getElementById('result-title').textContent = 'エラー';
+    if (e.message.includes('401')||e.message.includes('auth')) { toast('⚠️ APIキーが正しくありません'); openApiSetup(); }
+    else toast('⚠️ 分析に失敗: ' + e.message);
+  } finally { document.getElementById('go-btn').disabled = false; }
+}
+
+function renderResult(text, done) {
+  let html = text
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/^### (.+)$/gm,'<div class="md-h3">$1</div>')
+    .replace(/^## (.+)$/gm,'<div class="md-h2">$1</div>')
+    .replace(/\*\*(.+?)\*\*/g,'<b>$1</b>')
+    .replace(/◎/g,'<span style="color:#00b4d8;font-weight:900">◎</span>')
+    .replace(/○/g,'<span style="color:#90e0ef;font-weight:900">○</span>')
+    .replace(/▲/g,'<span style="color:#e67e22;font-weight:900">▲</span>')
+    .replace(/△/g,'<span style="color:#95a5a6;font-weight:700">△</span>')
+    .replace(/\n/g,'<br>');
+  if (!done) html += '<span class="cursor"></span>';
+  document.getElementById('result-body').innerHTML = html;
+}
+function copyResult() {
+  if (!resultText) { toast('まだ結果がありません'); return; }
+  navigator.clipboard.writeText(resultText).then(() => toast('📋 コピーしました'));
+}
+
+/* ─── 的中実績 ─── */
+function setJHit(hit) {
+  jHit = hit;
+  document.getElementById('btn-hit').className  = 'hit-btn' + (hit  ? ' on-hit'  : '');
+  document.getElementById('btn-miss').className = 'hit-btn' + (!hit ? ' on-miss' : '');
+  if (!hit) document.getElementById('jf-payout').value = '';
+}
+
+function saveJisseki() {
+  const date   = document.getElementById('jf-date').value;
+  const venue  = document.getElementById('jf-venue').value;
+  const race   = document.getElementById('jf-race').value;
+  const invest = parseInt(document.getElementById('jf-invest').value) || 0;
+  const payout = jHit ? (parseInt(document.getElementById('jf-payout').value) || 0) : 0;
+  if (!date)   { toast('⚠️ 日付を選択してください'); return; }
+  if (!invest) { toast('⚠️ 投資額を入力してください'); return; }
+  const record = { id:Date.now(), date, venue, race, hit:jHit, invest, payout, profit: payout - invest };
+  jisseki.unshift(record);
+  localStorage.setItem('kyotei_jisseki', JSON.stringify(jisseki));
+  document.getElementById('jf-invest').value = '';
+  document.getElementById('jf-payout').value = '';
+  renderJisseki();
+  toast('✅ 記録しました');
+}
+
+function deleteJisseki(id) {
+  jisseki = jisseki.filter(r => r.id !== id);
+  localStorage.setItem('kyotei_jisseki', JSON.stringify(jisseki));
+  renderJisseki();
+}
+
+function clearJisseki() {
+  if (!confirm('全ての実績を削除しますか？')) return;
+  jisseki = []; localStorage.removeItem('kyotei_jisseki');
+  renderJisseki(); toast('🗑️ 全削除しました');
+}
+
+function renderJisseki() {
+  const list = document.getElementById('jisseki-list');
+  const footer = document.getElementById('jisseki-footer');
+  const total = jisseki.length;
+  const hits  = jisseki.filter(r => r.hit).length;
+  const rate  = total ? Math.round(hits/total*100) : 0;
+  const totalProfit = jisseki.reduce((s,r) => s + r.profit, 0);
+  document.getElementById('js-total').textContent = total;
+  document.getElementById('js-hits').textContent  = hits;
+  document.getElementById('js-rate').textContent  = rate + '%';
+  const pEl = document.getElementById('js-profit');
+  pEl.textContent = (totalProfit >= 0 ? '+' : '') + totalProfit.toLocaleString() + '円';
+  pEl.className = 'js-stat-val ' + (totalProfit > 0 ? 'plus' : totalProfit < 0 ? 'minus' : '');
+  if (!total) {
+    list.innerHTML = '<div class="jisseki-empty">まだ記録がありません</div>';
+    footer.style.display = 'none'; return;
+  }
+  footer.style.display = 'flex';
+  list.innerHTML = jisseki.map(r => {
+    const profitStr = (r.profit >= 0 ? '+' : '') + r.profit.toLocaleString() + '円';
+    const profitClass = r.profit > 0 ? 'plus' : r.profit < 0 ? 'minus' : '';
+    const label = [r.venue, r.race].filter(Boolean).join(' ') || '未設定';
+    return `<div class="jr-item">
+      <span class="jr-badge">${r.hit ? '✅' : '❌'}</span>
+      <div class="jr-info">
+        <div class="jr-title">${r.date}　${label}</div>
+        <div class="jr-sub">投資 ${r.invest.toLocaleString()}円 → 払戻 ${r.payout.toLocaleString()}円</div>
+      </div>
+      <span class="jr-profit ${profitClass}">${profitStr}</span>
+      <button class="jr-del" onclick="deleteJisseki(${r.id})">🗑</button>
+    </div>`;
+  }).join('');
+}
+
+/* ─── MODAL ─── */
+function openModal(src) { document.getElementById('modal-img').src=src; document.getElementById('modal').classList.add('open'); }
+function closeModal() { document.getElementById('modal').classList.remove('open'); }
+document.addEventListener('keydown', e => { if(e.key==='Escape') closeModal(); });
+
+/* ─── TOAST ─── */
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent=msg; el.classList.add('show');
+  clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove('show'),3200);
+}
+</script>
+</body>
+</html>
