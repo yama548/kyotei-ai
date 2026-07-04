@@ -3,6 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="競艇AI予想">
+  <meta name="theme-color" content="#080808">
   <title>🚤 競艇予想AI</title>
   <style>
     :root {
@@ -85,7 +89,8 @@
     @media(min-width:500px){ .info-grid { grid-template-columns:repeat(4,1fr); } }
     .info-box { background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:8px 10px; }
     .info-box label { font-size:9px; color:var(--text3); display:block; margin-bottom:2px; }
-    .info-box select { width:100%; background:transparent; border:none; color:var(--text1); font-size:13px; font-weight:700; outline:none; font-family:inherit; }
+    .info-box select, .info-box input[type="number"] { width:100%; background:transparent; border:none; color:var(--text1); font-size:13px; font-weight:700; outline:none; font-family:inherit; }
+    .info-box input[type="number"]::placeholder { color:var(--text3); font-weight:500; }
     .info-box select option { background:var(--bg3); }
 
     /* CHIPS */
@@ -93,6 +98,16 @@
     .chip { font-size:12px; padding:6px 12px; border-radius:99px; border:1px solid var(--border); background:var(--bg2); color:var(--text2); cursor:pointer; transition:all .15s; user-select:none; }
     .chip:hover { border-color:var(--cyan); color:var(--cyan); }
     .chip.on { background:var(--cyan); border-color:var(--cyan); color:#000; font-weight:800; }
+
+    /* 高精度モード */
+    .deep-row { display:flex; align-items:center; gap:11px; background:var(--bg2); border:1px solid var(--border); border-radius:12px; padding:12px 14px; margin-bottom:18px; cursor:pointer; transition:all .15s; user-select:none; }
+    .deep-row:hover { border-color:var(--border-blue); }
+    .deep-row.on { border-color:var(--cyan); background:#001018; box-shadow:0 0 14px rgba(0,180,216,.12); }
+    .deep-check { width:22px; height:22px; min-width:22px; border-radius:6px; border:1.5px solid var(--border); display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:900; color:transparent; transition:all .15s; }
+    .deep-row.on .deep-check { background:var(--cyan); border-color:var(--cyan); color:#000; }
+    .deep-title { font-size:13px; font-weight:800; color:var(--text1); }
+    .deep-row.on .deep-title { color:var(--cyan); }
+    .deep-sub { font-size:10px; color:var(--text3); margin-top:2px; line-height:1.5; }
 
     /* FAB */
     .fab { position:fixed; bottom:0; left:0; right:0; padding:10px 14px 18px; background:linear-gradient(transparent,rgba(8,8,8,.98) 30%); z-index:90; }
@@ -199,7 +214,10 @@
     </div>
     <div class="api-body" id="api-body">
       <div class="api-note">
-        Anthropic APIキーが必要です。<a href="https://console.anthropic.com/" target="_blank">console.anthropic.com</a> で取得できます。キーはこのブラウザのみに保存されます。
+        Anthropic APIキーが必要です。<a href="https://console.anthropic.com/" target="_blank">console.anthropic.com</a> → API Keys → Create Key で発行できます。<br>
+        ⚠️ <b>Claude.ai（Pro契約）とは別物</b>です。APIの利用には console の Billing でクレジット購入（最低$5）が必要です。<br>
+        ⚠️ キーは作成時に<b>一度だけ</b>全文表示されます。その場で全文コピーしてください。<br>
+        キーはこのブラウザのみに保存されます。
       </div>
       <div class="api-input-row">
         <input class="api-input" id="api-key-input" type="password" placeholder="sk-ant-api03-..." autocomplete="off">
@@ -232,7 +250,7 @@
     <div class="upload-chips">
       <span class="uc">JPG</span><span class="uc">PNG</span>
       <span class="uc">WebP</span><span class="uc">HEIC</span>
-      <span class="uc">最大120枚</span>
+      <span class="uc">最大100枚</span>
     </div>
   </div>
 
@@ -280,12 +298,39 @@
       </select>
     </div>
     <div class="info-box">
-      <label>天候・風</label>
+      <label>天候</label>
       <select id="weather">
         <option value="">未選択</option>
-        <option>晴・無風</option><option>晴・追い風</option><option>晴・向い風</option>
-        <option>雨・無風</option><option>雨・荒れ</option><option>曇り</option>
+        <option>晴</option><option>曇り</option><option>雨</option><option>強雨</option><option>雪</option>
       </select>
+    </div>
+    <div class="info-box">
+      <label>風向</label>
+      <select id="wind-dir">
+        <option value="">未選択</option>
+        <option>無風</option><option>追い風</option><option>向かい風</option>
+        <option>横風（左から）</option><option>横風（右から）</option>
+      </select>
+    </div>
+    <div class="info-box">
+      <label>風速</label>
+      <select id="wind-spd">
+        <option value="">未選択</option>
+        <option>0〜1m</option><option>2〜3m</option><option>4〜5m</option>
+        <option>6〜7m</option><option>8m以上</option>
+      </select>
+    </div>
+    <div class="info-box">
+      <label>グレード</label>
+      <select id="grade">
+        <option value="">未選択</option>
+        <option>一般戦</option><option>G3</option><option>G2</option>
+        <option>G1</option><option>SG</option><option>企画レース（1号艇A級）</option>
+      </select>
+    </div>
+    <div class="info-box">
+      <label>舟券予算（円）</label>
+      <input type="number" id="budget" placeholder="例: 3000" min="100" step="100" inputmode="numeric">
     </div>
   </div>
   <hr>
@@ -300,6 +345,15 @@
     <div class="chip" data-v="展示タイム・スタートタイミング分析">⏱️ 展示分析</div>
     <div class="chip" data-v="コース別成績・枠番有利不利の考察">🔄 コース分析</div>
     <div class="chip" data-v="具体的な舟券の買い目と配分提案">🎫 買い目提案</div>
+  </div>
+
+  <!-- 高精度モード -->
+  <div class="deep-row" id="deep-row" onclick="toggleDeep()">
+    <div class="deep-check" id="deep-check">✓</div>
+    <div class="deep-txt">
+      <div class="deep-title">🧠 高精度モード（拡張思考）</div>
+      <div class="deep-sub">AIが回答前に内部でじっくり熟考します。的中率重視の方に推奨（分析時間とAPI料金は増加）</div>
+    </div>
   </div>
 
   <!-- ⑥ 分析結果 -->
@@ -322,8 +376,8 @@
     <div class="jisseki-box">
       <div class="jisseki-stats">
         <div class="js-stat"><div class="js-stat-val" id="js-total">0</div><div class="js-stat-label">総レース</div></div>
-        <div class="js-stat"><div class="js-stat-val" id="js-hits">0</div><div class="js-stat-label">的中</div></div>
         <div class="js-stat"><div class="js-stat-val" id="js-rate">0%</div><div class="js-stat-label">的中率</div></div>
+        <div class="js-stat"><div class="js-stat-val" id="js-roi">-</div><div class="js-stat-label">回収率</div></div>
         <div class="js-stat"><div class="js-stat-val" id="js-profit">¥0</div><div class="js-stat-label">累計収支</div></div>
       </div>
       <div class="jisseki-form">
@@ -346,6 +400,11 @@
           </select>
         </div>
         <div class="jf-row">
+          <select class="jf-inp" id="jf-type" style="max-width:110px;">
+            <option value="">券種</option>
+            <option>3連単</option><option>3連複</option><option>2連単</option>
+            <option>2連複</option><option>拡連複</option><option>単勝</option><option>複勝</option>
+          </select>
           <div class="hit-toggle">
             <button class="hit-btn on-hit" id="btn-hit" onclick="setJHit(true)">✅ 的中</button>
             <button class="hit-btn" id="btn-miss" onclick="setJHit(false)">❌ ハズレ</button>
@@ -388,6 +447,20 @@
 <div id="toast"></div>
 
 <script>
+/* ─── Safari プライベートブラウズ等で localStorage が使えない場合のフォールバック ─── */
+try { localStorage.setItem('__t','1'); localStorage.removeItem('__t'); }
+catch(e) {
+  (function(){
+    const mem = {};
+    const shim = {
+      getItem: k => (k in mem ? mem[k] : null),
+      setItem: (k,v) => { mem[k] = String(v); },
+      removeItem: k => { delete mem[k]; },
+      clear: () => { for (const k in mem) delete mem[k]; }
+    };
+    try { Object.defineProperty(window, 'localStorage', { value: shim, configurable: true }); } catch(_) {}
+  })();
+}
 /* ─── STATE ─── */
 let files = [], apiKey = localStorage.getItem('keiba_api_key') || '';
 let model = localStorage.getItem('keiba_model') || 'claude-sonnet-4-6';
@@ -415,11 +488,33 @@ function openApiSetup() {
   document.getElementById('api-body').classList.add('open');
   document.getElementById('api-arrow').classList.add('open');
 }
-function saveApiKey() {
-  const v = document.getElementById('api-key-input').value.trim();
-  if (!v.startsWith('sk-ant-')) { toast('⚠️ APIキーの形式が違います'); return; }
+async function saveApiKey() {
+  let v = document.getElementById('api-key-input').value.replace(/\s/g, '');
+  document.getElementById('api-key-input').value = v;
+  if (/[^\x21-\x7E]/.test(v)) { toast('⚠️ 全角文字や不正な文字が混ざっています。コピーし直してください'); return; }
+  if (!v.startsWith('sk-ant-')) { toast('⚠️ APIキーは sk-ant- で始まります。console.anthropic.comで発行したキーですか？'); return; }
+  document.getElementById('api-sub').textContent = '🔄 接続テスト中...';
+  const t = await testApiKey(v);
+  if (!t.ok) {
+    setApiStatus(false);
+    document.getElementById('api-sub').textContent = '❌ ' + t.msg;
+    toast('⚠️ ' + t.msg);
+    return;
+  }
   apiKey = v; localStorage.setItem('keiba_api_key', v);
-  setApiStatus(true); toggleApiSetup(); updateGoBtn(); toast('✅ APIキーを保存しました');
+  setApiStatus(true); toggleApiSetup(); updateGoBtn(); toast('✅ 接続テスト成功！キーを保存しました');
+}
+async function testApiKey(key) {
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/models?limit=1', {
+      headers:{ 'x-api-key':key, 'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' }
+    });
+    if (res.ok) return { ok:true };
+    if (res.status === 401) return { ok:false, msg:'このキーは無効です。console.anthropic.comで新規発行を' };
+    return { ok:false, msg:'接続エラー (HTTP ' + res.status + ')' };
+  } catch(e) {
+    return { ok:false, msg:'通信不可。広告ブロッカー・ネット接続を確認' };
+  }
 }
 function setApiStatus(ok) {
   document.getElementById('api-status').className = 'api-status' + (ok ? ' ok' : '');
@@ -439,9 +534,9 @@ fi.addEventListener('change', () => { addFiles(fi.files); fi.value = ''; });
 
 function addFiles(list) {
   const arr = Array.from(list).filter(f => f.type.startsWith('image/'));
-  const room = 120 - files.length;
-  if (room <= 0) { toast('⚠️ 最大120枚までです'); return; }
-  if (arr.length > room) toast(`⚠️ ${arr.length - room}枚スキップ（上限120枚）`);
+  const room = 100 - files.length;
+  if (room <= 0) { toast('⚠️ 最大100枚までです'); return; }
+  if (arr.length > room) toast(`⚠️ ${arr.length - room}枚スキップ（上限100枚）`);
   arr.slice(0, room).forEach(f => {
     compressImage(f, (url, mime, b64) => { files.push({ name:f.name, url, mime, b64 }); render(); updateGoBtn(); });
   });
@@ -482,6 +577,95 @@ document.getElementById('chip-row').addEventListener('click', e => {
   const c = e.target.closest('.chip'); if (!c) return; c.classList.toggle('on');
 });
 
+/* ─── 高精度モード ─── */
+let deepMode = localStorage.getItem('kyotei_deep') === '1';
+(function(){ document.getElementById('deep-row').classList.toggle('on', deepMode); })();
+function toggleDeep() {
+  deepMode = !deepMode;
+  document.getElementById('deep-row').classList.toggle('on', deepMode);
+  localStorage.setItem('kyotei_deep', deepMode ? '1' : '0');
+  toast(deepMode ? '🧠 高精度モード ON' : '高精度モード OFF');
+}
+
+/* ─── 全24場 水面特性データ ─── */
+const VENUE_DATA = {
+  '桐生':'淡水。標高が高く気圧の関係でモーターの出足に差が出やすい。1コース1着率は約50%と平均以下。冬は「赤城おろし」の強風でスタート難。ナイター開催',
+  '戸田':'淡水。全国一狭い水面で1マークの旋回が窮屈。1コース1着率約44%と全国最低クラス。まくり・まくり差しが決まりやすく、穴狙い向きの水面',
+  '江戸川':'河川コース。潮の干満と風がぶつかる全国一の難水面。1コース1着率約45%。当地実績・波乗り巧者を最重視。荒天時は大荒れ必至',
+  '平和島':'海水。1マークの振りが大きく1コース1着率約45%と低い。差しが決まる水面でカド(4コース)の一撃も多い',
+  '多摩川':'淡水。「日本一の静水面」で実力どおり決まりやすい。1コース1着率約53%。展示タイムの信頼度が高い場',
+  '浜名湖':'汽水。全国最大級の広い水面でセンター勢(3・4コース)が伸びやすい。1コース1着率約50%',
+  '蒲郡':'汽水・ナイター。広く静かな水面で1コース1着率約55%とイン有利。夜間の気温低下でモーター気配が変わりやすい',
+  '常滑':'海水。比較的素直な水面で1コース1着率約55%。冬季の「伊吹おろし」に注意',
+  '津':'海水。風の影響を受けやすく、強風時はセンター攻めが決まる。1コース1着率約53%',
+  '三国':'淡水。追い風の日が多くイン・差し有利。1コース1着率約55%',
+  'びわこ':'淡水。うねりが出やすく、春は雪解けの水位上昇でイン弱化。1コース1着率約50%。行き足のいいモーター重視',
+  '住之江':'淡水・ナイターの聖地。静水面で1コース1着率約56%。実力どおり決まりやすい',
+  '尼崎':'淡水。静水面で素直な決まり手が多い初心者向きの水面。1コース1着率約55%',
+  '鳴門':'海水。外海からうねりが入りやすく1コース1着率約48%とやや低め。まくり差しが多い',
+  '丸亀':'海水・ナイター。1コース1着率約55%。干満差があり満潮時はうねりに注意',
+  '児島':'海水。干満差が大きく、満潮時は差し有利・干潮時はまくり有利と潮で狙いを変える場。1コース1着率約55%',
+  '宮島':'海水。干満差が全国最大級で潮の流れにより展開が激変。1コース1着率約53%',
+  '徳山':'海水。1コース1着率約60%と全国屈指のイン天国。基本はイン軸で相手探し。モーニング開催で企画レースあり',
+  '下関':'海水・ナイター。1コース1着率約58%とイン強い',
+  '若松':'海水・ナイター。1コース1着率約55%。追い風時はさらにイン強化',
+  '芦屋':'淡水。モーニング開催で1号艇にA級を配置する企画レース多数。1コース1着率約58%',
+  '福岡':'海水。那珂川の流れと博多湾のうねりが1マーク付近で交錯し、握れず差し・まくり差しが多発。1コース1着率約50%',
+  '唐津':'淡水・モーニング開催。1コース1着率約52%。朝一のレースはスタートが揃いにくい',
+  '大村':'海水。競艇発祥の地で全国一のイン天国。1コース1着率約65%。基本はイン軸、2・3着の相手探しがメイン'
+};
+
+/* ─── 予想AIの分析原則（システムプロンプト） ─── */
+const SYSTEM_PROMPT = `あなたは競艇（ボートレース）予想を専門とするプロのアナリストです。的中率を最大化するため、以下の分析原則を厳守してください。
+
+【基本原則】
+- 競艇は1コースの1着率が全国平均約55%と圧倒的に有利な競技。分析は必ず「1号艇（1コース）の信頼度評価」から始める
+- 会場ごとのイン勝率・水面特性の情報が与えられた場合は最優先で考慮する
+- 画像から読み取れないデータは推測で埋めず「読み取り不可」と明記する。誤読は誤予想に直結する
+
+【評価基準】
+- 級別: A1 > A2 > B1 > B2。A1がB級に混ざるレースは実力差を最重視
+- 全国勝率: 6.50以上=トップ級 / 5.50〜6.49=堅実 / 4.50未満=軽視
+- 平均ST: .14以内=抜群 / .15〜.17=良好 / .20以上=不安材料。F持ち（フライング）は スタートが慎重になり減点
+- モーター2連率: 40%以上=上位機 / 35〜40%=普通 / 30%未満=劣勢機。ただし交換直後の時期は参考度低
+- 展示タイム: 上位と下位の差が0.10秒以上あれば重要視。周回展示のターン安定感も評価
+- チルト角度: マイナス=出足・回り足型(イン戦向き) / +0.5以上=伸び型(まくり狙いのサイン)
+- 節間成績・当地勝率を全国勝率より重視（「今の調子」が最重要）
+- 進入予想: 前づけ常習の選手（例: 枠なし進入の記載、コース取り実績）がいれば隊形変化を織り込む
+
+【風の影響】
+- 追い風3m以上: イン・差し有利。ただしスタート行き過ぎ(フライング)のリスク増
+- 向かい風4m以上: スタートが揃わずダッシュ勢(4〜6コース)のまくりが決まりやすい
+- 横風5m以上: スタート難で荒れやすい。ST安定型を上位評価
+
+【的中率向上の最重要ルール】
+- 自信の持てないレースは正直に「見送り推奨」と判定する。全レースを買うより見送る勇気が的中率と回収率を上げる
+- 買い目は絞る。3連単は最大10点前後まで。本線・抑え・穴の優先順位と資金配分を明示する
+- すべての印・買い目に必ず根拠を添える（「なんとなく」は禁止）
+- 断定的な表現を避け、確率的な見立てとして提示する`;
+
+/* ─── エラー診断 ─── */
+function explainError(status, msg) {
+  const m = (msg || '').toLowerCase();
+  if (m.includes('failed to fetch') || m.includes('networkerror') || m.includes('load failed'))
+    return '通信に失敗しました。考えられる原因:\n・インターネット接続が不安定\n・広告ブロッカーや拡張機能がAPI通信を遮断（一時的にOFFにして再試行）\n・会社/学校のネットワークで api.anthropic.com がブロックされている';
+  if (status === 401 || m.includes('authentication') || m.includes('invalid x-api-key'))
+    return 'APIキーが無効です。console.anthropic.com で発行したキー（sk-ant-api03-...）を再設定してください。※Claude.aiのログイン情報とは別物です';
+  if (m.includes('credit balance'))
+    return 'APIクレジット残高が不足しています。console.anthropic.com の Billing でクレジットを購入してください（Claude Proの契約とは別枠です）';
+  if (status === 429 || m.includes('rate limit'))
+    return 'リクエスト過多（レート制限）です。1〜2分待ってから再試行してください';
+  if (status === 529 || m.includes('overloaded'))
+    return 'Anthropicのサーバーが混雑しています。少し時間をおいて再試行してください';
+  if (m.includes('too many images') || m.includes('image'))
+    return '画像に問題があります。枚数を減らす（推奨: 本当に必要な出走表・展示情報の5〜15枚に絞る）と解決することが多いです';
+  if (m.includes('request_too_large') || m.includes('exceeds') && m.includes('size'))
+    return 'リクエストサイズが大きすぎます。画像の枚数を減らしてください（5〜15枚推奨）';
+  if (status === 400)
+    return 'リクエストが不正と判定されました。画像枚数を減らす、または高精度モードをOFFにして再試行してください';
+  return '再試行しても解決しない場合は、画像枚数を減らす・高精度モードをOFFにする・モデルをSonnetに変更する、をお試しください';
+}
+
 /* ─── ANALYZE ─── */
 async function analyze() {
   if (!apiKey) { toast('⚠️ APIキーを設定してください'); openApiSetup(); return; }
@@ -490,23 +674,33 @@ async function analyze() {
   const rnum    = document.getElementById('rnum').value;
   const water   = document.getElementById('water').value;
   const weather = document.getElementById('weather').value;
+  const windDir = document.getElementById('wind-dir').value;
+  const windSpd = document.getElementById('wind-spd').value;
+  const grade   = document.getElementById('grade').value;
   const chips   = [...document.querySelectorAll('.chip.on')].map(c => c.dataset.v);
-  const raceInfo = [venue, rnum, water, weather].filter(Boolean).join('　');
+  const raceInfo = [venue, rnum, grade, water, weather, windDir && `風向:${windDir}`, windSpd && `風速:${windSpd}`].filter(Boolean).join('　');
 
-  let prompt = `ボートレース（競艇）の${chips.length ? chips.join('・') : '総合予想'}をしてください。\n\n`;
-  if (raceInfo) prompt += `【レース情報】${raceInfo}\n\n`;
-  prompt += `【添付画像】出走表・オッズ・選手データなどを${files.length}枚添付しています。\n\n`;
-  prompt += `【分析内容】\n`;
-  prompt += `1. 画像から全艇の艇番（1〜6）・選手名・勝率・2連率・3連率・モーター番号・モーター勝率を読み取る\n`;
-  prompt += `2. 展示タイム・展示航走の評価（速い艇を特定）\n`;
-  prompt += `3. 各艇のコース適性・スタートタイミングを評価\n`;
-  prompt += `4. チルト角度を考慮する（マイナス=安定・インコース向き、プラス=直線伸び・捲り狙い）\n`;
-  prompt += `5. ◎本命 ○対抗 ▲単穴 △連穴 の印をつける\n`;
-  prompt += `6. 1コース（白）の信頼度を最初に評価する（競艇はインコースが圧倒的に有利）\n`;
-  if (chips.some(c=>c.includes('穴艇'))) prompt += `7. 高配当が期待できる穴艇（アウトコース有利時・モーター抜群の艇）を指摘\n`;
-  if (chips.some(c=>c.includes('買い目'))) prompt += `7. 3連単・3連複・2連単の具体的な買い目を提案\n`;
-  prompt += `\n各予想には確信度（高/中/低）を添えてください。\n`;
-  prompt += `※ エンターテインメント目的の分析です。舟券購入は自己責任でお願いします。`;
+  let prompt = `添付した${files.length}枚の画像（出走表・オッズ・選手データ・展示情報など）を精読し、${chips.length ? chips.join('・') : '総合予想'}を行ってください。\n\n`;
+  if (raceInfo) prompt += `【レース情報】${raceInfo}\n`;
+  if (venue && VENUE_DATA[venue]) prompt += `【${venue}の水面特性】${VENUE_DATA[venue]}\n`;
+  prompt += `\n【出力形式】以下の構成で必ず出力してください。\n\n`;
+  prompt += `## 1. データ読み取り\n全6艇について「艇番 / 選手名 / 級別 / 全国勝率 / 当地勝率 / モーター2連率 / 平均ST / 展示タイム / チルト / F・L持ち」を簡潔な一覧で。読み取れない項目は「-」と記す。\n\n`;
+  prompt += `## 2. 展開シミュレーション\n進入隊形（前づけの可能性含む）→ スタート隊形（各艇のST比較）→ 1マークの攻防、の順で具体的に予想。決まり手（逃げ/差し/まくり/まくり差し）まで踏み込む。\n\n`;
+  prompt += `## 3. 総合評価\n1号艇の信頼度を最初に評価した上で、◎本命 ○対抗 ▲単穴 △連穴 の印と各艇の根拠（1〜2行）。\n\n`;
+  prompt += `## 4. 信頼度判定\nこのレースの予想信頼度を S（鉄板級）/ A（自信あり）/ B（波乱含み）/ C（混戦・難解）で判定し理由を明記。C判定の場合は「⚠️ 見送り推奨」と明言する。\n\n`;
+  let secNo = 5;
+  if (chips.some(c=>c.includes('モーター'))) prompt += `## ${secNo++}. モーター評価\n各艇のモーター2連率・展示気配から機力を5段階評価し、機力上位2艇を特定。\n\n`;
+  if (chips.some(c=>c.includes('展示'))) prompt += `## ${secNo++}. 展示分析\n展示タイム順位と周回展示の評価。直線とターンのどちらが優れるかを艇ごとに整理。\n\n`;
+  if (chips.some(c=>c.includes('コース'))) prompt += `## ${secNo++}. コース分析\n各選手のコース別成績と枠番の有利不利、この水面との相性を考察。\n\n`;
+  if (chips.some(c=>c.includes('穴艇'))) prompt += `## ${secNo++}. 穴艇診断\n高配当が狙える艇（機力上位のアウト勢・展開利のある艇）を根拠付きで指摘。オッズ妙味があれば言及。\n\n`;
+  if (chips.some(c=>c.includes('買い目'))) {
+    const budget = parseInt(document.getElementById('budget').value) || 0;
+    const budgetTxt = budget
+      ? `予算は${budget.toLocaleString()}円。各買い目に賭ける金額を100円単位で明記し、合計が予算以内に収まるようにする。`
+      : `予算が未入力のため、まず冒頭に「💰 おすすめ予算: ◯◯円」を提示する。金額はこのレースの信頼度と買い目点数から算出する（目安: S=3,000〜5,000円 / A=2,000〜3,000円 / B=1,000〜2,000円で手堅く。あくまで余裕資金の範囲での提案と一言添える）。その後、おすすめ予算内で各買い目の金額を100円単位で配分する。`;
+    prompt += `## ${secNo++}. 買い目\n信頼度に応じて券種を選択（S/A=3連単中心、B=3連複や2連単で手堅く）。本線・抑え・穴の3段階、合計10点以内。${budgetTxt}\n出力は1行につき1買い目で「【本線】3連単 1-2-3　1,200円（想定オッズ◯〜◯倍）」の形式とし、最後に「合計◯点 ◯◯円」を明記。本線に厚く・穴は薄くのメリハリ配分を基本とし、トリガミ（的中しても払戻が投資額を下回る買い方）にならないよう配分する。信頼度C（見送り推奨）の場合は買い目を出さず理由のみ。\n\n`;
+  }
+  prompt += `※本分析はエンターテインメント目的の参考情報です。舟券の購入は自己責任・余裕資金の範囲で。`;
 
   const content = [...files.map(f => ({ type:'image', source:{ type:'base64', media_type:f.mime, data:f.b64 } })), { type:'text', text:prompt }];
 
@@ -528,13 +722,34 @@ async function analyze() {
   const pt = setInterval(() => { prog = Math.min(prog + Math.random()*3, 85); document.getElementById('loading-fill').style.width = prog+'%'; }, 300);
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const makeBody = (useThinking) => {
+      const b = { model, max_tokens: useThinking ? 16000 : 8192, stream:true, system:SYSTEM_PROMPT, messages:[{ role:'user', content }] };
+      if (useThinking) b.thinking = { type:'enabled', budget_tokens:6000 };
+      return b;
+    };
+    const doFetch = (useThinking) => fetch('https://api.anthropic.com/v1/messages', {
       method:'POST',
       headers:{ 'Content-Type':'application/json', 'x-api-key':apiKey, 'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' },
-      body:JSON.stringify({ model, max_tokens:4096, stream:true, messages:[{ role:'user', content }] })
+      body:JSON.stringify(makeBody(useThinking))
     });
+
+    let res = await doFetch(deepMode);
+    // 高精度モードが原因の400なら通常モードで自動リトライ
+    if (!res.ok && res.status === 400 && deepMode) {
+      const e1 = await res.json().catch(()=>({}));
+      const msg1 = e1.error?.message || '';
+      if (/thinking|budget|max_tokens/i.test(msg1)) {
+        toast('高精度モード非対応のため通常モードで再試行中...');
+        res = await doFetch(false);
+      } else {
+        const err = new Error(msg1 || 'HTTP 400'); err.status = 400; throw err;
+      }
+    }
     clearInterval(pt);
-    if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.error?.message || `HTTP ${res.status}`); }
+    if (!res.ok) {
+      const e = await res.json().catch(()=>({}));
+      const err = new Error(e.error?.message || `HTTP ${res.status}`); err.status = res.status; throw err;
+    }
     document.getElementById('loading-txt').style.display = 'none';
     document.getElementById('loading-fill').style.width = '100%';
     document.getElementById('result-title').textContent = '分析結果';
@@ -547,7 +762,16 @@ async function analyze() {
       for (const line of lines) {
         if (!line.startsWith('data: ')) continue;
         const raw = line.slice(6).trim(); if (raw==='[DONE]') break;
-        try { const obj = JSON.parse(raw); if (obj.type==='content_block_delta' && obj.delta?.type==='text_delta') { resultText += obj.delta.text; renderResult(resultText); } } catch {}
+        try {
+          const obj = JSON.parse(raw);
+          if (obj.type==='content_block_delta' && obj.delta?.type==='thinking_delta') {
+            document.getElementById('result-title').textContent = '🧠 熟考中...（高精度モード）';
+          }
+          if (obj.type==='content_block_delta' && obj.delta?.type==='text_delta') {
+            document.getElementById('result-title').textContent = '分析結果';
+            resultText += obj.delta.text; renderResult(resultText);
+          }
+        } catch {}
       }
     }
     renderResult(resultText, true);
@@ -556,10 +780,13 @@ async function analyze() {
   } catch(e) {
     clearInterval(pt);
     document.getElementById('loading-txt').style.display = 'none';
-    document.getElementById('result-body').innerHTML = `<span style="color:var(--red)">⚠️ エラー: ${e.message}</span>`;
+    const hint = explainError(e.status, e.message);
+    document.getElementById('result-body').innerHTML =
+      `<span style="color:var(--red)">⚠️ エラー: ${String(e.message).replace(/</g,'&lt;')}</span><br><br>` +
+      `<span style="color:var(--text2);font-size:13px;">💡 ${hint.replace(/</g,'&lt;').replace(/\n/g,'<br>')}</span>`;
     document.getElementById('result-title').textContent = 'エラー';
-    if (e.message.includes('401')||e.message.includes('auth')) { toast('⚠️ APIキーが正しくありません'); openApiSetup(); }
-    else toast('⚠️ 分析に失敗: ' + e.message);
+    if (e.status === 401 || e.message.includes('401') || e.message.toLowerCase().includes('auth')) { toast('⚠️ APIキーが正しくありません'); openApiSetup(); }
+    else toast('⚠️ 分析に失敗しました');
   } finally { document.getElementById('go-btn').disabled = false; }
 }
 
@@ -573,13 +800,26 @@ function renderResult(text, done) {
     .replace(/○/g,'<span style="color:#90e0ef;font-weight:900">○</span>')
     .replace(/▲/g,'<span style="color:#e67e22;font-weight:900">▲</span>')
     .replace(/△/g,'<span style="color:#95a5a6;font-weight:700">△</span>')
+    .replace(/見送り推奨/g,'<span style="color:#e74c3c;font-weight:900;border:1px solid #e74c3c;border-radius:4px;padding:0 5px;">見送り推奨</span>')
     .replace(/\n/g,'<br>');
   if (!done) html += '<span class="cursor"></span>';
   document.getElementById('result-body').innerHTML = html;
 }
 function copyResult() {
   if (!resultText) { toast('まだ結果がありません'); return; }
-  navigator.clipboard.writeText(resultText).then(() => toast('📋 コピーしました'));
+  const fallbackCopy = t => {
+    const ta = document.createElement('textarea');
+    ta.value = t; ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;';
+    document.body.appendChild(ta); ta.focus(); ta.select();
+    try { document.execCommand('copy'); toast('📋 コピーしました'); }
+    catch(e) { toast('⚠️ コピーできませんでした'); }
+    ta.remove();
+  };
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(resultText)
+      .then(() => toast('📋 コピーしました'))
+      .catch(() => fallbackCopy(resultText));
+  } else fallbackCopy(resultText);
 }
 
 /* ─── 的中実績 ─── */
@@ -594,11 +834,12 @@ function saveJisseki() {
   const date   = document.getElementById('jf-date').value;
   const venue  = document.getElementById('jf-venue').value;
   const race   = document.getElementById('jf-race').value;
+  const btype  = document.getElementById('jf-type').value;
   const invest = parseInt(document.getElementById('jf-invest').value) || 0;
   const payout = jHit ? (parseInt(document.getElementById('jf-payout').value) || 0) : 0;
   if (!date)   { toast('⚠️ 日付を選択してください'); return; }
   if (!invest) { toast('⚠️ 投資額を入力してください'); return; }
-  const record = { id:Date.now(), date, venue, race, hit:jHit, invest, payout, profit: payout - invest };
+  const record = { id:Date.now(), date, venue, race, btype, hit:jHit, invest, payout, profit: payout - invest };
   jisseki.unshift(record);
   localStorage.setItem('kyotei_jisseki', JSON.stringify(jisseki));
   document.getElementById('jf-invest').value = '';
@@ -625,10 +866,15 @@ function renderJisseki() {
   const total = jisseki.length;
   const hits  = jisseki.filter(r => r.hit).length;
   const rate  = total ? Math.round(hits/total*100) : 0;
-  const totalProfit = jisseki.reduce((s,r) => s + r.profit, 0);
+  const totalInvest = jisseki.reduce((s,r) => s + r.invest, 0);
+  const totalPayout = jisseki.reduce((s,r) => s + r.payout, 0);
+  const totalProfit = totalPayout - totalInvest;
+  const roi = totalInvest ? Math.round(totalPayout/totalInvest*100) : null;
   document.getElementById('js-total').textContent = total;
-  document.getElementById('js-hits').textContent  = hits;
   document.getElementById('js-rate').textContent  = rate + '%';
+  const roiEl = document.getElementById('js-roi');
+  roiEl.textContent = roi === null ? '-' : roi + '%';
+  roiEl.className = 'js-stat-val ' + (roi === null ? '' : roi >= 100 ? 'plus' : 'minus');
   const pEl = document.getElementById('js-profit');
   pEl.textContent = (totalProfit >= 0 ? '+' : '') + totalProfit.toLocaleString() + '円';
   pEl.className = 'js-stat-val ' + (totalProfit > 0 ? 'plus' : totalProfit < 0 ? 'minus' : '');
@@ -640,7 +886,7 @@ function renderJisseki() {
   list.innerHTML = jisseki.map(r => {
     const profitStr = (r.profit >= 0 ? '+' : '') + r.profit.toLocaleString() + '円';
     const profitClass = r.profit > 0 ? 'plus' : r.profit < 0 ? 'minus' : '';
-    const label = [r.venue, r.race].filter(Boolean).join(' ') || '未設定';
+    const label = [r.venue, r.race, r.btype].filter(Boolean).join(' ') || '未設定';
     return `<div class="jr-item">
       <span class="jr-badge">${r.hit ? '✅' : '❌'}</span>
       <div class="jr-info">
