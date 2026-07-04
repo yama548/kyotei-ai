@@ -722,9 +722,10 @@ async function analyze() {
   const pt = setInterval(() => { prog = Math.min(prog + Math.random()*3, 85); document.getElementById('loading-fill').style.width = prog+'%'; }, 300);
 
   try {
+    const isHaiku = /haiku/i.test(model);
     const makeBody = (useThinking) => {
-      const b = { model, max_tokens: useThinking ? 16000 : 8192, stream:true, system:SYSTEM_PROMPT, messages:[{ role:'user', content }] };
-      if (useThinking) b.thinking = { type:'enabled', budget_tokens:6000 };
+      const b = { model, max_tokens: useThinking ? (isHaiku ? 8192 : 16000) : 8192, stream:true, system:SYSTEM_PROMPT, messages:[{ role:'user', content }] };
+      if (useThinking) b.thinking = { type:'enabled', budget_tokens: isHaiku ? 4000 : 6000 };
       return b;
     };
     const doFetch = (useThinking) => fetch('https://api.anthropic.com/v1/messages', {
@@ -739,6 +740,7 @@ async function analyze() {
       const e1 = await res.json().catch(()=>({}));
       const msg1 = e1.error?.message || '';
       if (/thinking|budget|max_tokens/i.test(msg1)) {
+        console.warn('高精度モード fallback 理由:', msg1);
         toast('高精度モード非対応のため通常モードで再試行中...');
         res = await doFetch(false);
       } else {
