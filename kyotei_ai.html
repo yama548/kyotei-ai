@@ -722,10 +722,11 @@ async function analyze() {
   const pt = setInterval(() => { prog = Math.min(prog + Math.random()*3, 85); document.getElementById('loading-fill').style.width = prog+'%'; }, 300);
 
   try {
-    const isHaiku = /haiku/i.test(model);
+    // Opus 4.8 / Sonnet 4.6 は adaptive thinking 方式（budget_tokens指定はOpusで400エラーになる）
+    const adaptive = /opus|sonnet/i.test(model);
     const makeBody = (useThinking) => {
-      const b = { model, max_tokens: useThinking ? (isHaiku ? 8192 : 16000) : 8192, stream:true, system:SYSTEM_PROMPT, messages:[{ role:'user', content }] };
-      if (useThinking) b.thinking = { type:'enabled', budget_tokens: isHaiku ? 4000 : 6000 };
+      const b = { model, max_tokens: useThinking ? 16000 : 8192, stream:true, system:SYSTEM_PROMPT, messages:[{ role:'user', content }] };
+      if (useThinking) b.thinking = adaptive ? { type:'adaptive' } : { type:'enabled', budget_tokens:6000 };
       return b;
     };
     const doFetch = (useThinking) => fetch('https://api.anthropic.com/v1/messages', {
